@@ -1,5 +1,5 @@
 # sandbox-rust
-This project was created using `cargo new hello_world --bin`
+This project was created using `cargo init --bin`
 
 # TODO
 Go through the rust website books

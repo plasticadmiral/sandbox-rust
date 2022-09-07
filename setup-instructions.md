@@ -27,7 +27,7 @@ This path will then be added to your PATH environment variable by modifying the 
 
 `/home/hari/.profile`\
 `/home/hari/.bashrc`\
-`/home/hari/.zshenv`\
+`/home/hari/.zshenv`
 
 
 You can uninstall at any time with `rustup self uninstall` and these changes will be reverted.

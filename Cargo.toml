@@ -1,8 +1,16 @@
 [package]
 name = "sandbox-rust"
-version = "0.1.0"
+version = "1.66.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ndarray = "0.15.6"
+ndarray-linalg = { version = "0.16.0", features = ["openblas-system"] }
+plotly = { version = "0.8.3", features = ["kaleido", "ndarray"] }
+plotters = "0.3.3"
+
+[dev-dependencies]
+criterion = "0.4"
+

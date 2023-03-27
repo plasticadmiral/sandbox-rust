@@ -7,17 +7,86 @@ use ndarray_linalg::*;
 
 
 pub const GREETING: &'static str = "hello, Rust library here!";
-const OUT_FILE_NAME: &'static str = "plots/poisson.gif";
 
-pub fn aas() {
-    let a = array![1., 2., 4.];
-    let b = array![4., 6., 7., 8.];
-    let (c, d) = meshgrid(&a, &b);
-    println!("{}", c);
-    println!("{}", d);
 
+// MPM code
+pub fn run_mpm() {
+
+let meshx = arr2(&[[0.,1.,0.],
+                   [0.,1.,1.],
+                   [1.,2.,1.],
+                   [2.,2.,1.],
+                   [1.,2.,2.],
+                   [1.,2.,1.],
+                   [1.,1.,0.],
+                   [0.,1.,0.]]);
+
+let meshy = arr2(&[[0.,1.,1.],
+                   [0.,0.,1.],
+                   [0.,0.,1.],
+                   [0.,1.,1.], 
+                   [1.,1.,2.],
+                   [1.,2.,2.],
+                   [1.,2.,2.],
+                   [1.,1.,2.]]);
+
+let ptx = arr2(&[[0.,0.25],
+                 [0.,0.], 
+                 [0.,1.75], 
+                 [0.,0.], 
+                 [0.,0.], 
+                 [0.,0.], 
+                 [0.,0.75],
+                 [0.,0.]]);
+
+let pty = arr2(&[[0.,0.75],
+                 [0.,0.], 
+                 [0.,0.25], 
+                 [0.,0.], 
+                 [0.,0.], 
+                 [0.,0.], 
+                 [0.,1.75],
+                 [0.,0.]]);
+
+let aa = arr1(&[1, 2, 43]);
+// let elems = Array::<f64, Ix2>::zeros((8, 2).f());
+let ul:Array::<f64, Ix1> = &meshx.slice(s![..,1]) - &meshx.slice(s![..,0]);
+let ur:Array::<f64, Ix1> = &meshx.slice(s![..,2]) - &meshx.slice(s![..,0]);
+let ll:Array::<f64, Ix1> = &meshy.slice(s![..,1]) - &meshy.slice(s![..,0]);
+let lr:Array::<f64, Ix1> = &meshy.slice(s![..,2]) - &meshy.slice(s![..,0]);
+let uu:Array::<f64, Ix1> = &ptx.slice(s![..,1]) - &meshx.slice(s![..,0]);
+let dd:Array::<f64, Ix1> = &pty.slice(s![..,1]) - &meshy.slice(s![..,0]);
+
+let mut n = 0;
+while n < 8 {
+    if ptx[(n, 1)] != 0. {
+        //inv matrix here
+        let A = arr2(&[[ul[n], ur[n]], 
+                         [ll[n], lr[n]]]);
+        let B = arr1(&[uu[n], dd[n]]);
+        
+        let x = A.solve_into(B).unwrap();
+
+        println!("{}", x);
+    }
+    else {
+        println!("no particle in {}th element", n);
+    }
+
+    n+=1
 }
 
+
+//println!("arrray is: {:}",meshx.slice(s![..,1]));
+// let elex = concatenate![Axis(0), &[ele1.view(), ele2.view()]];
+
+println!("complete");
+         
+}
+
+
+
+// poisson equation code
 pub fn meshgrid(x: &Array<f64,Ix1>, y: &Array<f64,Ix1>) -> 
                     (Array<f64,Ix2>,Array<f64,Ix2>) {
     
@@ -38,7 +107,7 @@ pub fn poisson_data(nxx: &usize, nyy: &usize) ->
     let n_max = (nx-1) * (ny-1);
     let (dx, dy) = (1./((nx as f64)-1.), 1./((ny as f64)-1.));
     assert_eq!(nx, ny);
-    
+
     // loading tridiagonal values
     let mut block = Array::<f64,_>::eye(nx - 1)
          * -(2./f64::powi(dx,2) + 2./f64::powi(dy,2));
@@ -61,20 +130,4 @@ pub fn poisson_data(nxx: &usize, nyy: &usize) ->
     let Z = op.into_shape((nx-1, ny-1)).unwrap();
 
     (X,Y,Z)
-}
-
-
-fn poisson_plotly() {
-
-}
-
-fn pdf(x: f64, y: f64) -> f64 {
-    const SDX: f64 = 0.1;
-    const SDY: f64 = 0.1;
-    const A: f64 = 5.0;
-    let x = x as f64 / 10.0;
-    let y = y as f64 / 10.0;
-    println!("{}", x);
-    println!("{}", y);
-    A * (-x * x / 2.0 / SDX / SDX - y * y / 2.0 / SDY / SDY).exp()
 }

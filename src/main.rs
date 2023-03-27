@@ -11,14 +11,13 @@ use sandbox_rust::*;
 fn main() {
     println!("{}", GREETING);
 
-    let (x, y) = (13, 13);
-let (mut X, mut Y, mut Z) = poisson_data(&x, &y);
-println!("x--------------x");
-println!("{X}");
-println!("x--------------x");
-println!("{Y}");
-println!("x--------------x");
-println!("{Z}");
+    run_mpm();
+    // let (x, y) = (13, 13);
+    // let (mut X, mut Y, mut Z) = poisson_data(&x, &y);
+    // println!("x--------------x");
+    // println!("{X}");
+    // println!("x--------------x");
+    // println!("{Y}");
+    // println!("x--------------x");
+    // println!("{Z}");
 }
-
-

@@ -1,14 +1,135 @@
 #![allow(unused)]
 #![allow(non_snake_case)]
-use ndarray::*;
-use plotly::*;
+use ndarray::{*, Array3};
 use ndarray_linalg::*;
 // use plotters::prelude::*;
 
 
-pub const GREETING: &'static str = "hello, Rust library here!";
+pub const START: &'static str = "running... ";
+pub const END: &'static str = "complete! ";
 
 
+// min max step returns node positions and connectivity matrix
+pub fn generate_mesh() {
+    let mut all = array![[1.,2.,3.], [4.,5.,6.]]; 
+    let mut alo = Array::range(0., 10., 0.5);
+    println!("{}", alo);
+}
+
+
+
+pub fn is_point_in_element() {
+    
+
+}
+
+pub fn make_particles(ylen: usize, xlen: usize, gaps: f32) -> Array3<f32> { 
+
+    let yvars:Array1<f32> = Array::range(0., ylen as f32, gaps);
+    let xvars:Array1<f32> = Array::range(0., xlen as f32, gaps);
+
+    let mut particle:Array3<f32> = Array::zeros((2, yvars.len(), xvars.len()));
+
+    let mut y_layer = particle.index_axis_mut(Axis(0), 0);
+    for i in 0..y_layer.shape()[1] {
+        let mut col = y_layer.index_axis_mut(Axis(1), i);
+        col += &yvars;
+    }
+    drop(y_layer);
+
+    let mut x_layer = particle.index_axis_mut(Axis(0), 1);
+    for i in 0..x_layer.shape()[0] {
+        let mut row = x_layer.index_axis_mut(Axis(0), i);
+        row += &xvars;
+    }
+    particle
+}
+
+pub fn make_mesh(factor: usize) {
+
+    // Global coordinates for particles
+    // let particle_positions = arr2(&[[0.25,0.75],
+                                    // [1.75,0.25],
+                                    // [1.75,1.75]]);
+
+    // Holds mesh indices
+    // let node_positions = arr2(&[[0,0],[1,0],[2,0],
+    //                             [0,1],[1,1],[2,1],
+    //                             [0,2],[1,2],[2,2]]);
+    
+    let yvars:Array1<f32> = Array::range(0., (3 + 2 * factor) as f32, 1.);
+    let xvars:Array1<f32> = Array::range(0., (3 + 2 * factor) as f32, 1.);
+
+    let mut node_positions:Array3<f32> = Array::zeros((2, yvars.len(), xvars.len()));
+
+    let mut y_layer = node_positions.index_axis_mut(Axis(0), 0);
+    for i in 0..y_layer.shape()[1] {
+        let mut col = y_layer.index_axis_mut(Axis(1), i);
+        col += &yvars;
+    }
+    drop(y_layer);
+
+    let mut x_layer = node_positions.index_axis_mut(Axis(0), 1);
+    for i in 0..x_layer.shape()[0] {
+        let mut row = x_layer.index_axis_mut(Axis(0), i);
+        row += &xvars;
+    }
+
+    // Holds mesh_positions indices
+    // let node_connectivity = arr2(&[[0,1,4],[1,2,4],[0,3,4],
+    //                                [0,3,4],[2,5,4],[3,4,6],
+    //                                [4,5,8],[4,7,6],[4,8,7]]);
+        
+    // let mut node_connectivity = arr3(&[[[0,1,0],
+    //                                     [0,2,3],
+    //                                     [4,4,4]],
+
+    //                                    [[1,2,3],
+    //                                     [3,5,4],
+    //                                     [5,7,8]],
+
+    //                                    [[4,4,4],
+    //                                     [4,4,6],
+    //                                     [8,6,7]]]);
+
+    let mut node_connectivity:Array3<i32>;
+    if factor == 0 {
+        node_connectivity = Array::zeros((3, 4, 2));
+    } else {
+        node_connectivity = Array::zeros((3, 4 * 2 * factor, 2 * 2 * factor));
+    }
+
+    // for mut layer in node_connectivity.axis_iter_mut(Axis(0)) {
+    //     println!("{}", layer(node_position));
+    // }
+    // println!("{}", node_positions);
+    
+    let mut pt1_layer = node_connectivity.index_axis_mut(Axis(0), 0);
+    for y in 0..pt1_layer.shape()[0] {
+        for x in 0..pt1_layer.shape()[1] {
+            if x % 2 == 0 && y % 2 == 0 {
+                println!("pass")
+                //pt1_layer[y][x] = node_positions[y][x]
+            }
+        }
+        // let mut col = y_layer.index_axis_mut(Axis(1), i);
+        // col += &yvars;
+    }
+    // drop(y_layer);
+
+    let mut pt2_layer = node_connectivity.index_axis_mut(Axis(0), 1);
+    // for i in 0..x_layer.shape()[0] {
+    //     let mut row = x_layer.index_axis_mut(Axis(0), i);
+    //     row += &xvars;
+    // }
+
+    let mut pt3_layer = node_connectivity.index_axis_mut(Axis(0), 2);
+    // for i in 0..x_layer.shape()[0] {
+    //     let mut row = x_layer.index_axis_mut(Axis(0), i);
+    //     row += &xvars;
+    // }
+
+}
 // MPM code
 pub fn run_mpm() {
 
@@ -50,31 +171,33 @@ let pty = arr2(&[[0.,0.75],
 
 let aa = arr1(&[1, 2, 43]);
 // let elems = Array::<f64, Ix2>::zeros((8, 2).f());
-let ul:Array::<f64, Ix1> = &meshx.slice(s![..,1]) - &meshx.slice(s![..,0]);
-let ur:Array::<f64, Ix1> = &meshx.slice(s![..,2]) - &meshx.slice(s![..,0]);
-let ll:Array::<f64, Ix1> = &meshy.slice(s![..,1]) - &meshy.slice(s![..,0]);
-let lr:Array::<f64, Ix1> = &meshy.slice(s![..,2]) - &meshy.slice(s![..,0]);
-let uu:Array::<f64, Ix1> = &ptx.slice(s![..,1]) - &meshx.slice(s![..,0]);
-let dd:Array::<f64, Ix1> = &pty.slice(s![..,1]) - &meshy.slice(s![..,0]);
+let ul:Array::<f64, Ix1> = &meshx.slice(s![..,1]) - &meshx.slice(s![..,0]); // LHS
+let ur:Array::<f64, Ix1> = &meshx.slice(s![..,2]) - &meshx.slice(s![..,0]); // LHS
+let ll:Array::<f64, Ix1> = &meshy.slice(s![..,1]) - &meshy.slice(s![..,0]); // LHS
+let lr:Array::<f64, Ix1> = &meshy.slice(s![..,2]) - &meshy.slice(s![..,0]); // LHS
+let uu:Array::<f64, Ix1> = &ptx.slice(s![..,1]) - &meshx.slice(s![..,0]);   // RHS 
+let dd:Array::<f64, Ix1> = &pty.slice(s![..,1]) - &meshy.slice(s![..,0]);   // RHS
 
-let mut n = 0;
-while n < 8 {
-    if ptx[(n, 1)] != 0. {
-        //inv matrix here
-        let A = arr2(&[[ul[n], ur[n]], 
-                         [ll[n], lr[n]]]);
-        let B = arr1(&[uu[n], dd[n]]);
+println!("{}", meshx.slice(s![..,2]));
+
+// let mut n = 0;
+// while n < 8 {
+//     if ptx[(n, 1)] != 0. {
+//         //inv matrix here
+//         let A = arr2(&[[ul[n], ur[n]], 
+//                          [ll[n], lr[n]]]);
+//         let B = arr1(&[uu[n], dd[n]]);
         
-        let x = A.solve_into(B).unwrap();
+//         let x = A.solve_into(B).unwrap();
 
-        println!("{}", x);
-    }
-    else {
-        println!("no particle in {}th element", n);
-    }
+//         println!("{}", x);
+//     }
+//     else {
+//         println!("no particle in {}th element", n);
+//     }
 
-    n+=1
-}
+//     n+=1
+// }
 
 
 //println!("arrray is: {:}",meshx.slice(s![..,1]));

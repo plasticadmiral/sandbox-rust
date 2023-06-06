@@ -10,9 +10,49 @@ use ndarray::{*, Array3};
 use ndarray_linalg::*;
 // use plotters::prelude::*;
 
+fn calc_b(node_pos: Array2<f64>, node_conn: Array2<usize>) -> Array2<f64> {
+
+    let mut B: Array2<f64> = Array::zeros((0, 6));
+    let gradient_local_N0 = arr1(&[-1, -1]);
+    let gradient_local_N1 = arr1(&[1, 0]);
+    let gradient_local_N2 = arr1(&[0, 1]);
+
+    for N in node_conn.rows() {
+
+
+        
+        let J =  arr2(&[[node_pos.row(N[1])[0] - node_pos.row(N[0])[0], node_pos.row(N[1])[1] - node_pos.row(N[0])[1]], 
+                        [node_pos.row(N[2])[0] - node_pos.row(N[0])[0], node_pos.row(N[3])[1] - node_pos.row(N[0])[1]]]);
+
+        let gradient_global_N0 = J.solve_into(gradient_local_N0).unwrap();
+        let gradient_global_N1 = J.solve_into(gradient_local_N1).unwrap();
+        let gradient_global_N2 = J.solve_into(gradient_local_N2).unwrap();
+        let intermediate = arr2(&[[gradient_global_N0[0], 0, gradient_global_N1[0], 0, gradient_global_N2[0], 0], 
+                                  [0, gradient_global_N0[1], 0, gradient_global_N1[1], 0, gradient_global_N2[1]], 
+                                  [gradient_global_N0[1], gradient_global_N0[0], gradient_global_N1[1], 
+                                   gradient_global_N1[0], gradient_global_N2[1], gradient_global_N2[0]]]); 
+
+        B.push_row(ArrayView::from(&intermediate)).unwrap();
+        
+    }
+
+    B
+}
+
+
 pub fn f_fn(node_pos: Array2<f64>, node_conn: Array2<usize>, node_vel: Array2<f64>, pts: Array2<f64>) -> Array2<f64> {
-    let mut pts_vel = Array::zeros((2,2));
-    
+
+    let mut pts_vel:Array2<f64> = Array::zeros(node_vel.dim()); // allocating memory
+
+    for pt in pts.rows() {
+
+        let output = g_fn(&node_pos, &node_conn, &pt.to_owned()); // returns [node_conn index, local xpos, local ypos]
+        let nval = node_conn.row(output[0] as usize); // getting N position index for triangle containing the point
+
+        // V_p = N(X_p)V^e
+        pts_vel.row_mut(output[0] as usize)[0] = output[1] as f64 * node_vel.row(nval[1] as usize)[0];
+        pts_vel.row_mut(output[0] as usize)[1] = output[2] as f64 * node_vel.row(nval[2] as usize)[1];
+    }
     pts_vel 
 }
 

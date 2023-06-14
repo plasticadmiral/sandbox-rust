@@ -18,8 +18,9 @@ fn mainofficial() {
     let pt: Array1<f64> = arr1(&[0.5, 0.75]);
     let pt2: Array2<f64> = arr2(&[[0.5, 0.75], [0.55, 0.8]]);
 
-    let var1 = g_fn(&node_pos, &node_conn, &pt); 
-    println!("{:?}", var1);
+    // let var1 = g_fn(&node_pos, &node_conn, &pt); 
+    let (idx, xpos, ypos) = get_particle_position(&node_pos, &node_conn, &pt); 
+    // println!("{:?}", var1);
     
 }
 

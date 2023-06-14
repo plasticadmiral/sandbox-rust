@@ -69,3 +69,90 @@ pub fn f(node_pos: Array2<f64>, node_conn: Array2<usize>, node_vel: Array2<f64>,
     }
         result
 }
+
+pub fn g_fn(node_pos: &Array2<f64>, node_conn: &Array2<usize>, pt: &Array1<f64>) -> Array1<f64> {
+
+    let ne = node_conn.shape()[0]; // number of mesh elements
+    let es = node_conn.shape()[1]; // number of points in mesh element
+
+    // memory for final calculation
+    let mut lhs: Array2<f64> = Array2::zeros((2, 2 * ne));
+    let mut rhs: Array2<f64> = Array2::zeros((2, ne));
+    let mut r: Array2<f64> = Array2::zeros((es-1, ne));
+
+    let mut pos = 0; // position in matrix 
+    while pos < lhs.len() {
+
+        if pos < 2*ne { //upper half of the matrix
+
+            for n in 1..es { if pos == 2*ne {break;} //for each N of mesh element
+                lhs[(0, pos)] = node_pos.row(node_conn.row(pos/2)[n])[0] 
+                                        - node_pos.row(node_conn.row(pos/2)[0])[0];
+                pos += 1;
+            }
+        }
+
+        if 2*ne <= pos && pos < 4*ne { //lower half of the matrix
+
+            for n in 1..es { if pos == 4*ne {break;} //for each N of mesh element
+                lhs[(1, pos-2*ne)] = node_pos.row(node_conn.row((pos-2*ne)/2)[n])[1] 
+                                        - node_pos.row(node_conn.row((pos-2*ne)/2)[0])[1];
+                pos += 1;
+            }
+        }
+    } 
+
+    pos = 0;
+    while pos < rhs.len() {
+        if pos < ne {
+            rhs[(0, pos)] = pt[0] - node_pos.row(node_conn.row(pos)[0])[0];
+            pos += 1;
+        }
+        if ne <= pos && pos < 2*ne {
+            rhs[(1, pos-ne)] = pt[1] - node_pos.row(node_conn.row(pos-ne)[0])[1];
+            pos += 1;
+        }
+    }
+
+    let mut lhs_slice: Array2<f64> = Array::zeros((ne-1, ne-1));
+    let mut rhs_slice: Array1<f64> = Array::zeros(ne-1);
+    let mut r_slice: Array1<f64> = Array::zeros(ne-1);
+
+    pos = 0;
+    while pos < rhs.row(0).len() { //could be replaced by axis_chunks_iter
+        lhs_slice = lhs.slice(s![0..2,(0+2*pos)..(2+2*pos)]).to_owned();
+        rhs_slice = rhs.slice(s![0..2, pos]).to_owned();
+        r_slice = lhs_slice.solve_into(rhs_slice).unwrap();
+
+        r.column_mut(pos)[0] = r_slice[0]; 
+        r.column_mut(pos)[1] = r_slice[1]; 
+
+        pos += 1;
+    }
+    let mut idx_and_position: Array1<f64> = Array::zeros(3);
+    for (i, elem) in r.axis_iter_mut(Axis((1))).enumerate() {
+
+        if elem[0] > 0. && elem[1] > 0. && 1.-elem[0]-elem[1] > 0. {
+            idx_and_position[0] = i as f64;
+            idx_and_position[1] = elem[0];
+            idx_and_position[2] = elem[1];
+        }
+    } 
+    idx_and_position 
+}
+
+pub fn f_fn(node_pos: Array2<f64>, node_conn: Array2<usize>, node_vel: Array2<f64>, pts: Array2<f64>) -> Array2<f64> {
+
+    let mut pts_vel:Array2<f64> = Array::zeros(node_vel.dim()); // allocating memory
+
+    for pt in pts.rows() {
+
+        let output = g_fn(&node_pos, &node_conn, &pt.to_owned()); // returns [node_conn index, local xpos, local ypos]
+        let nval = node_conn.row(output[0] as usize); // getting N position index for triangle containing the point
+
+        // V_p = N(X_p)V^e
+        pts_vel.row_mut(output[0] as usize)[0] = output[1] as f64 * node_vel.row(nval[1] as usize)[0];
+        pts_vel.row_mut(output[0] as usize)[1] = output[2] as f64 * node_vel.row(nval[2] as usize)[1];
+    }
+    pts_vel 
+}

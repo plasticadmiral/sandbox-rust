@@ -19,7 +19,7 @@ fn mainofficial() {
     let pt: Array2<f64> = arr2(&[[0.25, 0.75], [1.50, 0.75]]);
 
     // returns result [[0.50, 0.25], [1.0, 0.5]]
-    let var = get_particle_velocity(node_pos, node_conn, node_vel, pt); 
+    let var = get_particle_velocity(&node_pos, &node_conn, &node_vel, &pt); 
     
     
     // let var1 = g_fn(&node_pos, &node_conn, &pt); 
@@ -28,7 +28,6 @@ fn mainofficial() {
     
 }
 
-
 fn main() {
-    mainofficial();
+    // mainofficial();
 }

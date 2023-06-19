@@ -6,6 +6,32 @@ mod tests {
     use ndarray::*;
 
     #[test]
+    fn b_fn_test() {
+        let node_pos: Array2<f64> = arr2(&[[0.,0.], [1.,0.], [0.,1.], [1.,1.]]);
+        let node_conn: Array2<usize> = arr2(&[[0,2,3], [0,1,3]]);
+        let node_vel: Array2<f64> = arr2(&[[0., 0.], [1., 0.], [0., 1.], [1., 1.]]);
+        let result = arr1(&[1., 1., 0.]);
+        let b = get_b(&node_pos, &node_conn);
+        let mut v: Array2<f64> = Array2::zeros((3, 6));
+
+        for (idx, elmnt) in node_conn.axis_iter(Axis(0)).enumerate() {
+
+            let mut r = Array2::zeros((3, 2));
+
+            for (pos, node_idx) in elmnt.iter().enumerate() {
+
+                r.row_mut(pos).assign(&node_vel.row(*node_idx)); 
+            }
+            for (pos, val) in r.iter().enumerate() {v[[idx, pos]] = *val;}        
+        }
+        
+        for (idx, b_layer) in b.axis_iter(Axis(0)).enumerate() {
+            
+           assert_eq!(b_layer.dot(&v.row(idx)), result); 
+        }
+    }
+
+    #[test]
     fn velocity_test() {
         let node_pos: Array2<f64> = arr2(&[[0.,0.], [1.,0.], [2.,0.], [0.,1.], [1.,1.], [2.,1.], [0.,2.], [1.,2.], [2.,2.]]);
         let node_conn: Array2<usize> = arr2(&[[0,1,4], [1,2,4], [0,3,4], [2,5,4], [3,4,6], [4,5,8], [4,7,6], [4,8,7]]);

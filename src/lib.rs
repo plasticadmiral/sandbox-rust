@@ -10,7 +10,7 @@ use ndarray::{*, Array3};
 use ndarray_linalg::*;
 // use plotters::prelude::*;
 
-fn get_b(n_pos: &Array2<f64>, n_conn: &Array2<usize>) -> Array3<f64> {
+pub fn get_b(n_pos: &Array2<f64>, n_conn: &Array2<usize>) -> Array3<f64> {
 
     let mut B: Array3<f64> = Array3::zeros((n_conn.shape()[0], 3, 6));
     let mut J: Array2<f64> = Array2::zeros((2,2));
@@ -30,16 +30,18 @@ fn get_b(n_pos: &Array2<f64>, n_conn: &Array2<usize>) -> Array3<f64> {
 
         for c in 0..6 {
             if c % 2 == 0 { 
-                B[[idx, 0, c]] = grd_N[[c/2, 0]]; B[[idx, 2, c]] = grd_N[[c/2, 1]];
+                B[[idx, 0, c]] = grd_N[[c/2, 0]]; 
+                B[[idx, 2, c]] = grd_N[[c/2, 1]];
             } else {
-                B[[idx, 1, c]] = grd_N[[c/2, 1]]; B[[idx, 2, c]] = grd_N[[c/2, 0]];
+                B[[idx, 1, c]] = grd_N[[c/2, 1]]; 
+                B[[idx, 2, c]] = grd_N[[c/2, 0]];
             }
         }
     }
     B
 }
 
-pub fn get_particle_velocity(n_pos: Array2<f64>, n_conn: Array2<usize>, n_vel: Array2<f64>, pts: Array2<f64>) -> Array2<f64> {
+pub fn get_particle_velocity(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f64>, pts: &Array2<f64>) -> Array2<f64> {
 
     let mut pts_vel:Array2<f64> = Array2::zeros(pts.dim()); 
     let mut N = Array1::zeros(n_conn.shape()[1]);

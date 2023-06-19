@@ -4,7 +4,7 @@
 use std::{iter::FromIterator, result, usize};
 // use sandbox_rust::*;
 use plotly::{ImageFormat, Plot, Scatter};
-use ndarray::*;
+use ndarray::{*, linalg::Dot};
 use ndarray_linalg::*;
 use ndarray::{*, Array3};
 use ndarray_linalg::*;
@@ -28,15 +28,11 @@ fn get_b(n_pos: &Array2<f64>, n_conn: &Array2<usize>) -> Array3<f64> {
         }
         for layer in 0..3 { J.solve_inplace(&mut grd_N.row_mut(layer)); }
 
-        for r in 0..3 { 
-            for c in 0..6 {
-                if r == 0 && c % 2 == 0 { B[[idx, r, c]] = grd_N[[c/2, 0]]; }
-
-                if r == 1 && c % 2 != 0 { B[[idx, r, c]] = grd_N[[c/2, 1]]; }
-
-                if r == 2 && c % 2 == 0 { B[[idx, r, c]] = grd_N[[c/2, 1]]; }
-
-                if r == 2 && c % 2 != 0 { B[[idx, r, c]] = grd_N[[c/2, 0]]; }
+        for c in 0..6 {
+            if c % 2 == 0 { 
+                B[[idx, 0, c]] = grd_N[[c/2, 0]]; B[[idx, 2, c]] = grd_N[[c/2, 1]];
+            } else {
+                B[[idx, 1, c]] = grd_N[[c/2, 1]]; B[[idx, 2, c]] = grd_N[[c/2, 0]];
             }
         }
     }
@@ -45,16 +41,22 @@ fn get_b(n_pos: &Array2<f64>, n_conn: &Array2<usize>) -> Array3<f64> {
 
 pub fn get_particle_velocity(n_pos: Array2<f64>, n_conn: Array2<usize>, n_vel: Array2<f64>, pts: Array2<f64>) -> Array2<f64> {
 
-    let mut pts_vel:Array2<f64> = Array::zeros(pts.dim()); 
+    let mut pts_vel:Array2<f64> = Array2::zeros(pts.dim()); 
+    let mut N = Array1::zeros(n_conn.shape()[1]);
+    let mut v = Array2::zeros((n_conn.shape()[1], n_vel.shape()[1]));
 
     for (idx_pt,pt) in pts.axis_iter(Axis(0)).enumerate() {
 
         let (idx_elmnt, xpos, ypos) = get_particle_position(&n_pos, &n_conn, &pt.to_owned()); 
-        let nval = n_conn.row(idx_elmnt); 
+
+        N.assign(&arr1(&[1.-xpos-ypos, xpos, ypos]));
+        for (idx, node) in n_conn.row(idx_elmnt).iter().enumerate() {
+            v.row_mut(idx).assign(&n_vel.row(*node));
+        }
 
         // V_p = N(X_p)V^e
-        pts_vel.row_mut(idx_pt)[0] = xpos * n_vel.row(nval[1])[0];
-        pts_vel.row_mut(idx_pt)[1] = ypos * n_vel.row(nval[2])[1];
+        let r = N.dot(&v);
+        pts_vel.row_mut(idx_pt).assign(&arr1(&[r[0], r[1]]));
     }
     pts_vel 
 }
@@ -77,10 +79,11 @@ pub fn get_particle_position(n_pos: &Array2<f64>, n_conn: &Array2<usize>, pt: &A
         }
 
         lhs.solve_inplace(&mut rhs);
-        
+
         if rhs.iter().all(|&x| x > 0.) && 1.-rhs.sum() > 0. {
 
             (idx_elmnt, pos_x, pos_y) = (idx, rhs[0], rhs[1]);
+            break;
         }
     }
     (idx_elmnt, pos_x, pos_y)

@@ -15,12 +15,16 @@ fn mainofficial() {
     let node_conn: Array2<usize> = arr2(&[[0,1,4], [1,2,4], [0,3,4], [2,5,4], [3,4,6], [4,5,8], [4,7,6], [4,8,7]]);
     let node_vel: Array2<f64> = arr2(&[[0., 0.], [0., 0.], [0., 0.], [0., 0.], [2., 1.], [0., 0.], [0., 0.], [0., 0.], [0., 0.]]);
     // let pts: Array2<f64> = arr2(&[[0.25, 1.75], [1.75, 0.25], [0.75, 1.75]]);
-    let pt: Array1<f64> = arr1(&[0.5, 0.75]);
-    let pt2: Array2<f64> = arr2(&[[0.5, 0.75], [0.55, 0.8]]);
+    // let pt: Array1<f64> = arr1(&[0.5, 0.75]);
+    let pt: Array2<f64> = arr2(&[[0.25, 0.75], [1.50, 0.75]]);
 
+    // returns result [[0.50, 0.25], [1.0, 0.5]]
+    let var = get_particle_velocity(node_pos, node_conn, node_vel, pt); 
+    
+    
     // let var1 = g_fn(&node_pos, &node_conn, &pt); 
-    let (idx, xpos, ypos) = get_particle_position(&node_pos, &node_conn, &pt); 
-    // println!("{:?}", var1);
+    // let (idx, xpos, ypos) = get_particle_position(&node_pos, &node_conn, &pt); 
+    println!("{:?}", var);
     
 }
 

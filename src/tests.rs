@@ -6,6 +6,21 @@ mod tests {
     use ndarray::*;
 
     #[test]
+    fn velocity_test() {
+        let node_pos: Array2<f64> = arr2(&[[0.,0.], [1.,0.], [2.,0.], [0.,1.], [1.,1.], [2.,1.], [0.,2.], [1.,2.], [2.,2.]]);
+        let node_conn: Array2<usize> = arr2(&[[0,1,4], [1,2,4], [0,3,4], [2,5,4], [3,4,6], [4,5,8], [4,7,6], [4,8,7]]);
+        let node_vel: Array2<f64> = arr2(&[[0., 0.], [0., 0.], [0., 0.], [0., 0.], [2., 1.], [0., 0.], [0., 0.], [0., 0.], [0., 0.]]);
+
+        let pt = arr1(&[0.25, 0.50]);
+        // let output = get_particle_position(&node_pos, &node_conn, &pt);
+        // let should_be = arr1(&[2., 0.25, 0.25]);
+        let output = get_particle_position(&node_pos, &node_conn, &pt);
+        let should_be = (2, 0.25, 0.25);
+        assert_eq!(output, should_be);
+    }
+
+
+    #[test]
     fn single_pt_in_mesh_2() {
         let node_pos: Array2<f64> = arr2(&[[0.,0.], [1.,0.], [2.,0.], [0.,1.], [1.,1.], [2.,1.], [0.,2.], [1.,2.], [2.,2.]]);
         let node_conn: Array2<usize> = arr2(&[[0,1,4], [1,2,4], [0,3,4], [2,5,4], [3,4,6], [4,5,8], [4,7,6], [4,8,7]]);

@@ -1,7 +1,7 @@
 #![allow(unused)]
 #![allow(non_snake_case)]
 
-use std::{iter::FromIterator, result, usize};
+use std::{iter::FromIterator, result, usize, process::id};
 // use sandbox_rust::*;
 use plotly::{ImageFormat, Plot, Scatter};
 use ndarray::{*, linalg::Dot};
@@ -9,6 +9,30 @@ use ndarray_linalg::*;
 use ndarray::{*, Array3};
 use ndarray_linalg::*;
 // use plotters::prelude::*;
+
+pub fn get_delta_e(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f64>, pts: &Array2<f64>, delta_t: &f64) -> Array2<f64> {
+    let mut delta_e: Array2<f64> = Array2::zeros((pts.shape()[0], 3));
+    let mut v: Array2<f64> = Array2::zeros((0, 2));
+    let mut idx_mesh: usize = 0;
+
+    let B = get_b(&n_pos, &n_conn);
+
+    for (idx_pt, pt) in pts.axis_iter(Axis(0)).enumerate() {
+
+        (idx_mesh, _, _) = get_particle_position(&n_pos, &n_conn, &pt.to_owned());
+        
+        for idx_node in n_conn.row(idx_mesh) {v.push_row(n_vel.row(*idx_node));}
+
+        let v_flat = Array::from_iter(v.iter().cloned());
+        let B_calc = B.index_axis(Axis(0), idx_mesh);
+
+        delta_e.row_mut(idx_pt).assign(&B_calc.dot(&v_flat));
+    } 
+
+    delta_e = delta_e * *delta_t;
+    delta_e
+}
+
 
 pub fn get_b(n_pos: &Array2<f64>, n_conn: &Array2<usize>) -> Array3<f64> {
 

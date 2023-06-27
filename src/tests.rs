@@ -5,6 +5,12 @@ mod tests {
     use sandbox_rust::*;
     use ndarray::*;
 
+
+
+    fn particle_velocity_test() {
+
+    }
+
     #[test]
     fn b_fn_test() {
         let node_pos: Array2<f64> = arr2(&[[0.,0.], [1.,0.], [0.,1.], [1.,1.]]);
@@ -37,12 +43,19 @@ mod tests {
         let node_conn: Array2<usize> = arr2(&[[0,1,4], [1,2,4], [0,3,4], [2,5,4], [3,4,6], [4,5,8], [4,7,6], [4,8,7]]);
         let node_vel: Array2<f64> = arr2(&[[0., 0.], [0., 0.], [0., 0.], [0., 0.], [2., 1.], [0., 0.], [0., 0.], [0., 0.], [0., 0.]]);
 
-        let pt = arr1(&[0.25, 0.50]);
-        // let output = get_particle_position(&node_pos, &node_conn, &pt);
-        // let should_be = arr1(&[2., 0.25, 0.25]);
-        let output = get_particle_position(&node_pos, &node_conn, &pt);
-        let should_be = (2, 0.25, 0.25);
-        assert_eq!(output, should_be);
+        let pt1: Array2<f64> = arr2(&[[0.25, 0.75], [1.50, 0.75]]);
+        let pt2: Array2<f64> = arr2(&[[0.75, 0.25], [1.25, 1.50]]);
+        let pt3: Array2<f64> = arr2(&[[1.75, 1.25], [1.50, 1.25]]);
+
+        // returns result [[0.50, 0.25], [1.0, 0.5]]
+        let var1 = get_particle_velocity(&node_pos, &node_conn, &node_vel, &pt1); 
+        let var2 = get_particle_velocity(&node_pos, &node_conn, &node_vel, &pt2); 
+        let var3 = get_particle_velocity(&node_pos, &node_conn, &node_vel, &pt3); 
+
+        for row in var1.rows() {assert_eq!(row[0]/row[1], 2.);}
+        for row in var2.rows() {assert_eq!(row[0]/row[1], 2.);}
+        for row in var3.rows() {assert_eq!(row[0]/row[1], 2.);}
+        
     }
 
 

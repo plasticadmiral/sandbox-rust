@@ -16,18 +16,24 @@ fn mainofficial() {
     let node_vel: Array2<f64> = arr2(&[[0., 0.], [0., 0.], [0., 0.], [0., 0.], [2., 1.], [0., 0.], [0., 0.], [0., 0.], [0., 0.]]);
     // let pts: Array2<f64> = arr2(&[[0.25, 1.75], [1.75, 0.25], [0.75, 1.75]]);
     // let pt: Array1<f64> = arr1(&[0.5, 0.75]);
-    let pt: Array2<f64> = arr2(&[[0.25, 0.75], [1.50, 0.75]]);
+    let pt1: Array2<f64> = arr2(&[[0.25, 0.75], [1.50, 0.75]]);
+    let pt2: Array2<f64> = arr2(&[[0.75, 0.25], [1.25, 1.50]]);
+    let pt3: Array2<f64> = arr2(&[[1.75, 1.25], [1.50, 1.25]]);
 
     // returns result [[0.50, 0.25], [1.0, 0.5]]
-    let var = get_particle_velocity(&node_pos, &node_conn, &node_vel, &pt); 
+    let var1 = get_particle_velocity(&node_pos, &node_conn, &node_vel, &pt1); 
+    let var2 = get_particle_velocity(&node_pos, &node_conn, &node_vel, &pt2); 
+    let var3 = get_particle_velocity(&node_pos, &node_conn, &node_vel, &pt3); 
     
     
     // let var1 = g_fn(&node_pos, &node_conn, &pt); 
     // let (idx, xpos, ypos) = get_particle_position(&node_pos, &node_conn, &pt); 
-    println!("{:?}", var);
+    println!("{:?}", var1);
+    println!("{:?}", var2);
+    println!("{:?}", var3);
     
 }
 
 fn main() {
-    // mainofficial();
+    mainofficial();
 }

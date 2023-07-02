@@ -1,7 +1,7 @@
 #![allow(unused)]
 #![allow(non_snake_case)]
 
-use std::{iter::FromIterator, result, usize, process::id};
+use std::{iter::FromIterator, result, usize, process::id, f32::consts::E};
 // use sandbox_rust::*;
 use plotly::{ImageFormat, Plot, Scatter};
 use ndarray::{*, linalg::Dot};
@@ -9,6 +9,57 @@ use ndarray_linalg::*;
 use ndarray::{*, Array3};
 use ndarray_linalg::*;
 // use plotters::prelude::*;
+
+pub fn get_internal_forces(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f64>, moe: f64, nu: f64) -> Array2<f64> {
+
+    let b = get_b(n_pos, n_conn);
+    let stress = get_stress(n_pos, n_conn, n_vel, moe, nu);
+    let mut int_forces: Array2<f64> = Array2::zeros((b.shape()[0], b.shape()[2])); //8x6
+
+    for (idx, b_layer) in b.axis_iter(Axis(0)).enumerate() {
+
+        int_forces.row_mut(idx).assign(&b_layer.t().dot(&stress.row(idx)));
+    }
+
+    int_forces
+}
+
+
+pub fn get_stress(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f64>, moe: f64, nu: f64) -> Array2<f64> {
+
+    let mut stress: Array2<f64> = Array2::zeros((n_conn.shape()[0], 3));
+    let strain: Array2<f64> = get_strain(n_pos, n_conn, n_vel);
+    let D: Array2<f64> = moe/(1.-nu.powi(2)) * arr2(&[[1., nu, 0.], [nu, 1., 0.], [0., 0., (1.-nu)/2.]]);    
+
+    stress = D.dot(&strain); 
+    stress
+}
+
+pub fn get_strain(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f64>) -> Array2<f64> {
+
+    let mut strain: Array2<f64> = Array2::zeros((n_conn.shape()[0], 3));
+    let mut v: Array2<f64> = Array2::zeros((3, 6));
+    let b: Array3<f64> = get_b(&n_pos, &n_conn);
+
+    for (idx, elmnt) in n_conn.axis_iter(Axis(0)).enumerate() {
+
+        let mut r = Array2::zeros((3, 2)); // holds velocities of each element
+
+        for (pos, node_idx) in elmnt.iter().enumerate() {
+
+            r.row_mut(pos).assign(&n_vel.row(*node_idx)); 
+        }
+        for (pos, val) in r.iter().enumerate() {v[[idx, pos]] = *val;} // flattens r into v      
+    }
+    
+    for (idx, b_layer) in b.axis_iter(Axis(0)).enumerate() {
+
+        strain.row_mut(idx).assign(&b_layer.dot(&v.row(idx))); 
+    }
+    
+    strain
+}
+
 
 pub fn get_delta_e(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f64>, pts: &Array2<f64>, delta_t: &f64) -> Array2<f64> {
     let mut delta_e: Array2<f64> = Array2::zeros((pts.shape()[0], 3));

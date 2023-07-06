@@ -10,13 +10,27 @@ use ndarray::{*, Array3};
 use ndarray_linalg::*;
 // use plotters::prelude::*;
 
+pub fn get_nodal_forces(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f64>, moe: f64, nu: f64) -> Array2<f64> {
+
+    let forces: Array2<f64> = get_internal_forces(n_pos, n_conn, n_vel, moe, nu);
+    let mut n_force: Array2<f64> = Array2::zeros(n_pos.dim());
+
+    for (idx, elmnt) in n_conn.axis_iter(Axis(0)).enumerate() {
+    
+        for N in 0..3 {
+            n_force.row_mut(elmnt[N])[0] += forces.row(idx)[N*2]; 
+            n_force.row_mut(elmnt[N])[1] += forces.row(idx)[N*2+1]; 
+        }
+    }
+    n_force
+}
+
 pub fn get_internal_forces(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f64>, moe: f64, nu: f64) -> Array2<f64> {
 
-    let b = get_b(n_pos, n_conn);
-    let stress = get_stress(n_pos, n_conn, n_vel, moe, nu);
+    let b: Array3<f64> = get_b(n_pos, n_conn);
+    let stress: Array2<f64> = get_stress(n_pos, n_conn, n_vel, moe, nu);
     let mut int_forces: Array2<f64> = Array2::zeros((b.shape()[0], b.shape()[2])); //8x6
     let mut J: Array2<f64> = Array2::zeros((2,2)); 
-    let mut det_J: f64 = 0.;
 
     for (idx, b_layer) in b.axis_iter(Axis(0)).enumerate() {
 
@@ -27,9 +41,9 @@ pub fn get_internal_forces(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &
                 J[[r,c]] = n_pos.row(N[r+1])[c] - n_pos.row(N[0])[c];
             }
         }
-        det_J = J[(0,0)] * J[(1,1)] - J[(0,1)] * J[(1,0)];
+        let det_J: f64 = J[(0,0)] * J[(1,1)] - J[(0,1)] * J[(1,0)];
 
-        let var = b_layer.t().dot(&stress.row(idx)) * det_J;
+        let var = b_layer.t().dot(&stress.row(idx)) * det_J * 0.5;
         int_forces.row_mut(idx).assign(&var);
             
     }

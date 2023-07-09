@@ -6,6 +6,31 @@ mod tests {
     use ndarray::*;
 
     #[test]
+    fn internal_forces_test() {
+        let n_pos: Array2<f64> = arr2(&[[0.,0.], [1.,0.], [0.,1.], [1.,1.]]);
+        let n_conn: Array2<usize> = arr2(&[[0,2,3], [0,1,3]]);
+        let n_vel: Array2<f64> = arr2(&[[0., 0.], [1., 0.], [0., 1.], [1., 1.]]);
+        let moe: f64 = 130.;
+        let nu: f64 = 0.2;
+        let elmnt_width: f64 = 1.;
+
+        let forces: Array2<f64> = get_nodal_forces(&n_pos, &n_conn, &n_vel, moe, nu);
+        
+        let f: f64 = moe / (1.-nu.powi(2)) * (1.+nu) * elmnt_width * 0.5;
+        
+        // 81.25
+        println!("{:?}", f); 
+    
+        // [-81.25000000000001, 81.25000000000001],
+        // [81.25000000000001, -81.25000000000001],
+        // [81.25000000000001, -81.25000000000001],
+        // [-81.25000000000001, 81.25000000000001]
+        println!("{:?}", forces);  
+
+
+    }
+
+    #[test]
     fn strain_test() {
         let node_pos: Array2<f64> = arr2(&[[0.,0.], [1.,0.], [0.,1.], [1.,1.]]);
         let node_conn: Array2<usize> = arr2(&[[0,2,3], [0,1,3]]);

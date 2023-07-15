@@ -10,6 +10,51 @@ use ndarray::{*, Array3};
 use ndarray_linalg::*;
 // use plotters::prelude::*;
 
+pub fn get_acceleration(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f64>, rho: f64, moe: f64, nu: f64) {
+
+   let mass = get_mass(&n_pos, &n_conn, rho);
+   let forces = get_nodal_forces(n_pos, n_conn, n_vel, moe, nu);
+
+}
+
+pub fn get_mass(n_pos: &Array2<f64>, n_conn: &Array2<usize>, rho: f64) -> Array2<f64> {
+
+    let mut n_mass: Array2<f64> = Array2::zeros(n_pos.dim());
+    let mut element_mass: Array2<f64> = Array2::zeros((6,6));
+    let mut J: Array2<f64> = Array2::zeros((2,2)); 
+
+
+    for (idx, elmnt) in n_conn.axis_iter(Axis(0)).enumerate() {
+
+        for r in 0..2 {
+            for c in 0..2 {
+                J[[r,c]] = n_pos.row(elmnt[r+1])[c] - n_pos.row(elmnt[0])[c];
+            }
+        }
+        let area: f64 = (J[(0,0)] * J[(1,1)] - J[(0,1)] * J[(1,0)]) * 0.5;
+
+        element_mass = rho * area * 1./3. * Array::eye(6);
+
+        for N in 0..3 {
+           n_mass.row_mut(elmnt[N])[0] += element_mass.row(N*2)[N*2]; 
+           n_mass.row_mut(elmnt[N])[1] += element_mass.row(N*2+1)[N*2+1]; 
+        }
+    }
+
+    // [[0.3333333333333333, 0.3333333333333333],
+    // [0.3333333333333333, 0.3333333333333333],
+    // [0.3333333333333333, 0.3333333333333333],
+    // [0.3333333333333333, 0.3333333333333333],
+    // [1.3333333333333333, 1.3333333333333333],
+    // [0.3333333333333333, 0.3333333333333333],
+    // [0.3333333333333333, 0.3333333333333333],
+    // [0.3333333333333333, 0.3333333333333333],
+    // [0.3333333333333333, 0.3333333333333333]],
+    println!("{:?}", n_mass);
+    n_mass
+}
+
+
 pub fn get_nodal_forces(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f64>, moe: f64, nu: f64) -> Array2<f64> {
 
     let forces: Array2<f64> = get_internal_forces(n_pos, n_conn, n_vel, moe, nu);

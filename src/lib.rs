@@ -10,25 +10,39 @@ use ndarray::{*, Array3};
 use ndarray_linalg::*;
 // use plotters::prelude::*;
 
-pub fn get_acceleration(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f64>, rho: f64, moe: f64, nu: f64) {
+pub fn get_acceleration(n: &Mesh, n_vel: &Array2<f64>, ext_forces: &Array2<f64>, rho: f64, moe: f64, nu: f64) -> Array1<f64>{
 
-   let mass = get_mass(&n_pos, &n_conn, rho);
-   let forces = get_nodal_forces(n_pos, n_conn, n_vel, moe, nu);
+    let int_forces: Array2<f64> = get_nodal_forces(&n, &n_vel, moe, nu);
+    let masses: Array2<f64> = get_mass(&n, rho);
+    
+    let mut f_int: Array1<f64> = Array1::zeros(n.pos.len());
+    let mut f_ext: Array1<f64> = Array1::zeros(n.pos.len());
+    let mut m: Array1<f64> = Array1::zeros(n.pos.len());
+    let mut a: Array1<f64> = Array1::zeros(n.pos.len());
 
+    for (row, pos) in (0..n.pos.len()).step_by(2).enumerate() {
+
+        (m[pos], m[pos+1]) = (masses[[row, 0]], masses[[row, 1]]);
+
+        (f_int[pos], f_int[pos+1]) = (int_forces[[row, 0]], int_forces[[row, 1]]);
+
+        (f_ext[pos], f_ext[pos+1]) = (ext_forces[[row, 0]], ext_forces[[row, 1]]);
+    }
+    a = (f_int - f_ext) / m;
+    a
 }
 
-pub fn get_mass(n_pos: &Array2<f64>, n_conn: &Array2<usize>, rho: f64) -> Array2<f64> {
+pub fn get_mass(n: &Mesh, rho: f64) -> Array2<f64> {
 
-    let mut n_mass: Array2<f64> = Array2::zeros(n_pos.dim());
+    let mut n_mass: Array2<f64> = Array2::zeros(n.pos.dim());
     let mut element_mass: Array2<f64> = Array2::zeros((6,6));
     let mut J: Array2<f64> = Array2::zeros((2,2)); 
 
-
-    for (idx, elmnt) in n_conn.axis_iter(Axis(0)).enumerate() {
+    for (idx, elmnt) in n.conn.axis_iter(Axis(0)).enumerate() {
 
         for r in 0..2 {
             for c in 0..2 {
-                J[[r,c]] = n_pos.row(elmnt[r+1])[c] - n_pos.row(elmnt[0])[c];
+                J[[r,c]] = n.pos.row(elmnt[r+1])[c] - n.pos.row(elmnt[0])[c];
             }
         }
         let area: f64 = (J[(0,0)] * J[(1,1)] - J[(0,1)] * J[(1,0)]) * 0.5;
@@ -40,27 +54,16 @@ pub fn get_mass(n_pos: &Array2<f64>, n_conn: &Array2<usize>, rho: f64) -> Array2
            n_mass.row_mut(elmnt[N])[1] += element_mass.row(N*2+1)[N*2+1]; 
         }
     }
-
-    // [[0.3333333333333333, 0.3333333333333333],
-    // [0.3333333333333333, 0.3333333333333333],
-    // [0.3333333333333333, 0.3333333333333333],
-    // [0.3333333333333333, 0.3333333333333333],
-    // [1.3333333333333333, 1.3333333333333333],
-    // [0.3333333333333333, 0.3333333333333333],
-    // [0.3333333333333333, 0.3333333333333333],
-    // [0.3333333333333333, 0.3333333333333333],
-    // [0.3333333333333333, 0.3333333333333333]],
-    println!("{:?}", n_mass);
     n_mass
 }
 
 
-pub fn get_nodal_forces(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f64>, moe: f64, nu: f64) -> Array2<f64> {
+pub fn get_nodal_forces(n: &Mesh, n_vel: &Array2<f64>, moe: f64, nu: f64) -> Array2<f64> {
 
-    let forces: Array2<f64> = get_internal_forces(n_pos, n_conn, n_vel, moe, nu);
-    let mut n_force: Array2<f64> = Array2::zeros(n_pos.dim());
+    let forces: Array2<f64> = get_internal_forces(&n, &n_vel, moe, nu);
+    let mut n_force: Array2<f64> = Array2::zeros(n.pos.dim());
 
-    for (idx, elmnt) in n_conn.axis_iter(Axis(0)).enumerate() {
+    for (idx, elmnt) in n.conn.axis_iter(Axis(0)).enumerate() {
     
         for N in 0..3 {
             n_force.row_mut(elmnt[N])[0] += forces.row(idx)[N*2]; 
@@ -70,20 +73,20 @@ pub fn get_nodal_forces(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Arr
     n_force
 }
 
-pub fn get_internal_forces(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f64>, moe: f64, nu: f64) -> Array2<f64> {
+pub fn get_internal_forces(n: &Mesh, n_vel: &Array2<f64>, moe: f64, nu: f64) -> Array2<f64> {
 
-    let b: Array3<f64> = get_b(n_pos, n_conn);
-    let stress: Array2<f64> = get_stress(n_pos, n_conn, n_vel, moe, nu);
+    let b: Array3<f64> = get_b(&n);
+    let stress: Array2<f64> = get_stress(&n, &n_vel, moe, nu);
     let mut int_forces: Array2<f64> = Array2::zeros((b.shape()[0], b.shape()[2])); //8x6
     let mut J: Array2<f64> = Array2::zeros((2,2)); 
 
     for (idx, b_layer) in b.axis_iter(Axis(0)).enumerate() {
 
-        let N: Array1<usize> = n_conn.row(idx).to_owned();
+        let N: Array1<usize> = n.conn.row(idx).to_owned();
 
         for r in 0..2 {
             for c in 0..2 {
-                J[[r,c]] = n_pos.row(N[r+1])[c] - n_pos.row(N[0])[c];
+                J[[r,c]] = n.pos.row(N[r+1])[c] - n.pos.row(N[0])[c];
             }
         }
         let det_J: f64 = J[(0,0)] * J[(1,1)] - J[(0,1)] * J[(1,0)];
@@ -97,10 +100,10 @@ pub fn get_internal_forces(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &
 }
 
 
-pub fn get_stress(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f64>, moe: f64, nu: f64) -> Array2<f64> {
+pub fn get_stress(n: &Mesh, n_vel: &Array2<f64>, moe: f64, nu: f64) -> Array2<f64> {
 
-    let mut stress: Array2<f64> = Array2::zeros((n_conn.shape()[0], 3));
-    let strain: Array2<f64> = get_strain(n_pos, n_conn, n_vel);
+    let mut stress: Array2<f64> = Array2::zeros((n.conn.shape()[0], 3));
+    let strain: Array2<f64> = get_strain(&n, n_vel);
     let D: Array2<f64> = moe/(1.-nu.powi(2)) * arr2(&[[1., nu, 0.], [nu, 1., 0.], [0., 0., (1.-nu)/2.]]);    
 
     let var = D.dot(&strain.t()); 
@@ -108,13 +111,13 @@ pub fn get_stress(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f6
     stress
 }
 
-pub fn get_strain(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f64>) -> Array2<f64> {
+pub fn get_strain(n: &Mesh, n_vel: &Array2<f64>) -> Array2<f64> {
 
-    let mut strain: Array2<f64> = Array2::zeros((n_conn.shape()[0], 3));
-    let mut v: Array2<f64> = Array2::zeros((n_conn.shape()[0], 6));
-    let b: Array3<f64> = get_b(&n_pos, &n_conn);
+    let mut strain: Array2<f64> = Array2::zeros((n.conn.shape()[0], 3));
+    let mut v: Array2<f64> = Array2::zeros((n.conn.shape()[0], 6));
+    let b: Array3<f64> = get_b(&n);
 
-    for (idx, elmnt) in n_conn.axis_iter(Axis(0)).enumerate() {
+    for (idx, elmnt) in n.conn.axis_iter(Axis(0)).enumerate() {
 
         let mut r = Array2::zeros((3, 2)); // holds velocities of each element
 
@@ -133,20 +136,20 @@ pub fn get_strain(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f6
     strain
 }
 
-pub fn get_b(n_pos: &Array2<f64>, n_conn: &Array2<usize>) -> Array3<f64> {
+pub fn get_b(n: &Mesh) -> Array3<f64> {
 
-    let mut B: Array3<f64> = Array3::zeros((n_conn.shape()[0], 3, 6));
+    let mut B: Array3<f64> = Array3::zeros((n.conn.shape()[0], 3, 6));
     let mut J: Array2<f64> = Array2::zeros((2,2));
     let mut grd_N: Array2<f64> = arr2(&[[-1., -1.], [1., 0.], [0., 1.]]);
 
-    for (idx, N) in n_conn.axis_iter(Axis(0)).enumerate() {
+    for (idx, N) in n.conn.axis_iter(Axis(0)).enumerate() {
 
         grd_N = arr2(&[[-1., -1.], [1., 0.], [0., 1.]]);
 
         for r in 0..2 {
             for c in 0..2 {
 
-                J[[r,c]] = n_pos.row(N[r+1])[c] - n_pos.row(N[0])[c];
+                J[[r,c]] = n.pos.row(N[r+1])[c] - n.pos.row(N[0])[c];
             }
         }
         for layer in 0..3 { J.solve_inplace(&mut grd_N.row_mut(layer)); }
@@ -164,18 +167,18 @@ pub fn get_b(n_pos: &Array2<f64>, n_conn: &Array2<usize>) -> Array3<f64> {
     B
 }
 
-pub fn get_particle_velocity(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel: &Array2<f64>, pts: &Array2<f64>) -> Array2<f64> {
+pub fn get_particle_velocity(n: &Mesh, n_vel: &Array2<f64>, pts: &Array2<f64>) -> Array2<f64> {
 
     let mut pts_vel:Array2<f64> = Array2::zeros(pts.dim()); 
-    let mut N = Array1::zeros(n_conn.shape()[1]);
-    let mut v = Array2::zeros((n_conn.shape()[1], n_vel.shape()[1]));
+    let mut N = Array1::zeros(n.conn.shape()[1]);
+    let mut v = Array2::zeros((n.conn.shape()[1], n_vel.shape()[1]));
 
     for (idx_pt,pt) in pts.axis_iter(Axis(0)).enumerate() {
 
-        let (idx_elmnt, xpos, ypos) = get_particle_position(&n_pos, &n_conn, &pt.to_owned()); 
+        let (idx_elmnt, xpos, ypos) = get_particle_position(&n, &pt.to_owned()); 
 
         N.assign(&arr1(&[1.-xpos-ypos, xpos, ypos]));
-        for (idx, node) in n_conn.row(idx_elmnt).iter().enumerate() {
+        for (idx, node) in n.conn.row(idx_elmnt).iter().enumerate() {
             v.row_mut(idx).assign(&n_vel.row(*node));
         }
 
@@ -186,21 +189,22 @@ pub fn get_particle_velocity(n_pos: &Array2<f64>, n_conn: &Array2<usize>, n_vel:
     pts_vel 
 }
 
-pub fn get_particle_position(n_pos: &Array2<f64>, n_conn: &Array2<usize>, pt: &Array1<f64>) -> (usize, f64, f64) {
+
+pub fn get_particle_position(n: &Mesh,  pt: &Array1<f64>) -> (usize, f64, f64) {
     
     let (mut idx_elmnt, mut pos_x, mut pos_y): (usize, f64, f64) = (0, 0., 0.);
     
     let mut lhs: Array2<f64> = Array2::zeros((2,2));
     let mut rhs: Array1<f64> = Array1::zeros(2);
 
-    for (idx, N) in n_conn.axis_iter(Axis(0)).enumerate() {
+    for (idx, N) in n.conn.axis_iter(Axis(0)).enumerate() {
         for r in 0..2 { 
             for c in 0..2 {
 
-                lhs[[r, c]] = n_pos.row(N[c+1])[r] - n_pos.row(N[0])[r];
+                lhs[[r, c]] = n.pos.row(N[c+1])[r] - n.pos.row(N[0])[r];
             }
 
-            rhs[r] = pt[r] - n_pos.row(N[0])[r];
+            rhs[r] = pt[r] - n.pos.row(N[0])[r];
         }
 
         lhs.solve_inplace(&mut rhs);
@@ -212,6 +216,10 @@ pub fn get_particle_position(n_pos: &Array2<f64>, n_conn: &Array2<usize>, pt: &A
         }
     }
     (idx_elmnt, pos_x, pos_y)
+}
+pub struct Mesh {
+    pub pos: Array2<f64>,
+    pub conn: Array2<usize>, 
 }
 
 // poisson equation code

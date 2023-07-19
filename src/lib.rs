@@ -14,21 +14,13 @@ pub fn get_acceleration(n: &Mesh, n_vel: &Array2<f64>, ext_forces: &Array2<f64>,
 
     let int_forces: Array2<f64> = get_nodal_forces(&n, &n_vel, moe, nu);
     let masses: Array2<f64> = get_mass(&n, rho);
-    
-    let mut f_int: Array1<f64> = Array1::zeros(n.pos.len());
-    let mut f_ext: Array1<f64> = Array1::zeros(n.pos.len());
-    let mut m: Array1<f64> = Array1::zeros(n.pos.len());
     let mut a: Array1<f64> = Array1::zeros(n.pos.len());
 
     for (row, pos) in (0..n.pos.len()).step_by(2).enumerate() {
 
-        (m[pos], m[pos+1]) = (masses[[row, 0]], masses[[row, 1]]);
-
-        (f_int[pos], f_int[pos+1]) = (int_forces[[row, 0]], int_forces[[row, 1]]);
-
-        (f_ext[pos], f_ext[pos+1]) = (ext_forces[[row, 0]], ext_forces[[row, 1]]);
+        a[pos] = (int_forces[[row, 0]] - ext_forces[[row, 0]]) / masses[[row, 0]];
+        a[pos+1] = (int_forces[[row, 1]] - ext_forces[[row, 1]]) / masses[[row, 1]];
     }
-    a = (f_int - f_ext) / m;
     a
 }
 

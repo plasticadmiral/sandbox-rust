@@ -10,17 +10,31 @@ use ndarray::{*, Array3};
 use ndarray_linalg::*;
 // use plotters::prelude::*;
 
-pub fn get_acceleration(n: &Mesh, n_vel: &Array2<f64>, ext_forces: &Array2<f64>, rho: f64, moe: f64, nu: f64) -> Array1<f64>{
 
-    let int_forces: Array2<f64> = get_nodal_forces(&n, &n_vel, moe, nu);
-    let masses: Array2<f64> = get_mass(&n, rho);
-    let mut a: Array1<f64> = Array1::zeros(n.pos.len());
+pub fn verletstep2(v: &mut Array2<f64>, a: &Array2<f64>, dt: f64) {
+        
+    *v = v.to_owned() + 0.5 * a * dt;
+}
 
-    for (row, pos) in (0..n.pos.len()).step_by(2).enumerate() {
+pub fn verletstep1(n: &mut Mesh, v: &mut Array2<f64>, a: &Array2<f64>, dt: f64) {
+            
+    *v = v.to_owned() + 0.5 * a * dt;
+    n.pos = n.pos.to_owned() + v.to_owned() * dt;
+}
 
-        a[pos] = (int_forces[[row, 0]] - ext_forces[[row, 0]]) / masses[[row, 0]];
-        a[pos+1] = (int_forces[[row, 1]] - ext_forces[[row, 1]]) / masses[[row, 1]];
-    }
+pub fn get_acceleration(n: &Mesh, n_vel: &Array2<f64>, ext_f: &Array2<f64>, rho: f64, moe: f64, nu: f64) -> Array2<f64>{
+
+    let int_f: Array2<f64> = get_nodal_forces(&n, &n_vel, moe, nu);
+    let m: Array2<f64> = get_mass(&n, rho);
+    let mut a: Array2<f64> = Array2::zeros(n.pos.dim());
+    // let mut a: Array1<f64> = Array1::zeros(n.pos.len());
+
+    // for (row, pos) in (0..n.pos.len()).step_by(2).enumerate() {
+
+    //     a[pos] = (int_forces[[row, 0]] - ext_forces[[row, 0]]) / masses[[row, 0]];
+    //     a[pos+1] = (int_forces[[row, 1]] - ext_forces[[row, 1]]) / masses[[row, 1]];
+    // }
+    a = (int_f - ext_f) / m;
     a
 }
 

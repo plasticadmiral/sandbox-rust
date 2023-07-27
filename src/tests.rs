@@ -7,31 +7,37 @@ mod tests {
 
     #[test]
     fn verlet_test() {
-        let mut n = Mesh {
+        let n = Mesh {
             pos: arr2(&[[0.,0.], [1.,0.], [0.,1.], [1.,1.]]),
             conn: arr2(&[[0,3,2], [0,1,3]]),
         };
+
         let (rho, moe, nu, dt): (f64, f64, f64, f64) = (1., 130., 0.2, 1.); 
-        let  mut n_vel: Array2<f64> = Array2::zeros(n.pos.dim());
 
-        // -1 external force in x and y axis
-        let  ext_f: Array2<f64> =  - Array2::ones(n.pos.dim());
+        let mut n_vel: Array2<f64> = Array2::zeros(n.pos.dim());
+        let mut a: Array2<f64> = Array2::zeros(n.pos.dim());
+        let mut disp: Array2<f64> = Array2::zeros(n.pos.dim());
+
+        let  ext_f: Array2<f64> = arr2(&[[2.,2.], [1.,1.], [1.,1.], [2.,2.]]);
+
+        for l in 0..4 {
+            verletstep1(&mut disp, &mut n_vel, &a, dt);
+
+            // disp + n.pos for acceleration ?
+            a = get_acceleration(&n, &n_vel, &ext_f, rho, moe, nu);
+            verletstep2(&mut n_vel, &a, dt);
+        }
+
+        // [[36.0, 36.0],
+        //  [36.0, 36.0],
+        //  [36.0, 36.0],
+        //  [36.0, 36.0]],
+        println!("{:?}", disp);
         
-        let a: Array2<f64> = get_acceleration(&n, &n_vel, &ext_f, rho, moe, nu);
-
-        verletstep1(&mut n, &mut n_vel, &a, dt);
-        verletstep2(&mut n_vel, &a, dt);
-
-        // [1.5, 1.5],
-        // [4.0, 3.0],
-        // [3.0, 4.0],
-        // [2.5, 2.5]
-        println!("{:?}", n.pos);
-        
-        // [3.0, 3.0],
-        // [6.0, 6.0],
-        // [6.0, 6.0],
-        // [3.0, 3.0]
+        // [[21.0, 21.0],
+        //  [21.0, 21.0],
+        //  [21.0, 21.0],
+        //  [21.0, 21.0]], 
         println!("{:?}", n_vel);
     }
 
@@ -49,6 +55,7 @@ mod tests {
 
         let accel = get_acceleration(&nodes, &n_vel, &ext_f, rho, moe, nu);
 
+        // should i make this negative ?
         let f: f64 = moe / (1.-nu.powi(2)) * (1.+nu) * elmnt_width * 0.5;
         let m: f64 = 1./2. * 1./3.;
 
@@ -56,12 +63,9 @@ mod tests {
         let den: Array2<f64> = arr2(&[[m*2., m*2.], [m, m], [m, m], [m*2., m*2.]]);
 
         let r: Array2<f64> = num/den;
-        // let mut r_flat: Array1<f64> = Array1::zeros(n_vel.len());
 
-        // for (pos, val) in r.iter().enumerate() {r_flat[pos] = *val};    
-        // println!("{:?}", accel);
-        // assert_eq!(accel, r_flat);
-        assert_eq!(accel, r);
+
+        assert_eq!(accel, - r);
     }
 
     #[test]

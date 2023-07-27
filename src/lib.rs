@@ -10,16 +10,44 @@ use ndarray::{*, Array3};
 use ndarray_linalg::*;
 // use plotters::prelude::*;
 
+pub fn get_mesh(lx: usize, ly: usize) -> Mesh {
+    assert!(lx >= 2); assert!(ly >= 2);
+    let (p_rows, c_rows): (usize, usize) = (lx*ly, (lx-1)*(ly-1)*2);
+    
+    let mut r = Mesh {
+        pos: Array2::zeros((p_rows, 2)),
+        conn: Array2::zeros((c_rows, 3)),
+    };
+
+    for pos in 0..p_rows {
+
+        let x = (pos % lx) as f64;
+        let y = (pos / lx) as i32;
+
+        r.pos.row_mut(pos).assign(&arr1(&[x, y as f64]));
+    }
+
+    let mut p: usize = 0;
+    for pos in 0..c_rows {
+                
+        if pos % 2 == 0 { r.conn.row_mut(pos).assign(&arr1(&[p, p+lx+1, p+lx]));}
+        
+        else { r.conn.row_mut(pos).assign(&arr1(&[p, p+1, p+lx+1])); p +=1;}
+    }
+
+    r
+}
+
 
 pub fn verletstep2(v: &mut Array2<f64>, a: &Array2<f64>, dt: f64) {
         
     *v = v.to_owned() + 0.5 * a * dt;
 }
 
-pub fn verletstep1(n: &mut Mesh, v: &mut Array2<f64>, a: &Array2<f64>, dt: f64) {
+pub fn verletstep1(disp: &mut Array2<f64>, v: &mut Array2<f64>, a: &Array2<f64>, dt: f64) {
             
     *v = v.to_owned() + 0.5 * a * dt;
-    n.pos = n.pos.to_owned() + v.to_owned() * dt;
+    *disp = disp.to_owned() + v.to_owned() * dt;
 }
 
 pub fn get_acceleration(n: &Mesh, n_vel: &Array2<f64>, ext_f: &Array2<f64>, rho: f64, moe: f64, nu: f64) -> Array2<f64>{
@@ -27,14 +55,8 @@ pub fn get_acceleration(n: &Mesh, n_vel: &Array2<f64>, ext_f: &Array2<f64>, rho:
     let int_f: Array2<f64> = get_nodal_forces(&n, &n_vel, moe, nu);
     let m: Array2<f64> = get_mass(&n, rho);
     let mut a: Array2<f64> = Array2::zeros(n.pos.dim());
-    // let mut a: Array1<f64> = Array1::zeros(n.pos.len());
 
-    // for (row, pos) in (0..n.pos.len()).step_by(2).enumerate() {
-
-    //     a[pos] = (int_forces[[row, 0]] - ext_forces[[row, 0]]) / masses[[row, 0]];
-    //     a[pos+1] = (int_forces[[row, 1]] - ext_forces[[row, 1]]) / masses[[row, 1]];
-    // }
-    a = (int_f - ext_f) / m;
+    a = (ext_f - int_f) / m;
     a
 }
 

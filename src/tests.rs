@@ -4,11 +4,19 @@
 mod tests {
     use sandbox_rust::*;
     use ndarray::*;
+    use std::fs::OpenOptions;
+    use std::io::Write;
+
 
     #[test]
-    fn sim() {
+    fn energy_conservation_test() {
+        let mut tot: f64 = 0.0;
+        let mut file = OpenOptions::new().append(true).create(true).open("data.txt").expect("cannot open file");
+        // file.write_all("\nTutorialsPoint".as_bytes()).expect("write failed");
+        
         let n: Mesh = get_mesh(8, 2);
-        let (rho, moe, nu, dt): (f64, f64, f64, f64) = (1., 130., 0.2, 1.); 
+
+        let (rho, moe, nu, dt): (f64, f64, f64, f64) = (1., 130., 0.2, 0.0014); 
 
         let mut n_vel: Array2<f64> = Array2::zeros(n.pos.dim());
         let mut a: Array2<f64> = Array2::zeros(n.pos.dim());
@@ -19,7 +27,78 @@ mod tests {
         ext_f.row_mut(7)[0] = 1.;
         ext_f.row_mut(15)[0] = 2.;
 
-        for l in 0..10 {
+        let mut ke: f64 = 0.0;
+        let mut pe: f64 = 0.0;
+        let mut m: Array2<f64> = get_mass(&n, rho); 
+        let mut f_int: Array2<f64> = Array2::zeros(n.pos.dim());
+
+        let mut m_flat: Array1<f64> = Array::from_iter(m.iter().cloned());
+        let mut f_int_flat: Array1<f64> = Array1::zeros(m_flat.dim());
+        let mut disp_flat: Array1<f64> = Array1::zeros(m_flat.dim());
+        let mut n_vel_flat: Array1<f64> = Array1::zeros(m_flat.dim());
+        let mut mv_flat: Array1<f64> = Array1::zeros(m_flat.dim());
+
+        for l in 0..10000 {
+            if l == 2000 {
+                ext_f.row_mut(7)[0] = 0.;
+                ext_f.row_mut(15)[0] = 0.;
+            }
+
+            verletstep1(&mut disp, &mut n_vel, &a, dt);
+
+            f_int = get_nodal_forces(&n, &n_vel, moe, nu);
+            a = get_acceleration(&n, &n_vel, &ext_f, rho, moe, nu);
+            
+            //row 0 & 8 of a make x and y to 0
+            a.row_mut(0).assign(&arr1(&[0.,0.]));
+            a.row_mut(8).assign(&arr1(&[0.,0.]));
+            
+            verletstep2(&mut n_vel, &a, dt);
+
+            n_vel_flat = Array::from_iter(n_vel.iter().cloned());
+            disp_flat = Array::from_iter(disp.iter().cloned());
+            f_int_flat = Array::from_iter(f_int.iter().cloned()); 
+            
+            for i in 0..m_flat.len() {
+               mv_flat[i] = m_flat[i] * n_vel_flat[i]; 
+            }
+
+            // println!("{:?}", disp_flat);
+
+            ke = 0.5 * n_vel_flat.dot(&mv_flat);
+
+            pe = 0.5 * disp_flat.dot(&f_int_flat);
+
+            tot = pe+ke;
+            file.write_all(tot.to_string().as_bytes()).expect("write failed");
+            file.write_all("\n".as_bytes()).expect("write failed");
+
+        }
+
+
+    }
+
+    #[test]
+    fn sim_test() {
+        let n: Mesh = get_mesh(8, 2);
+        let (rho, moe, nu, dt): (f64, f64, f64, f64) = (1., 130., 0.2, 0.000127); 
+
+        let mut n_vel: Array2<f64> = Array2::zeros(n.pos.dim());
+        let mut a: Array2<f64> = Array2::zeros(n.pos.dim());
+        let mut disp: Array2<f64> = Array2::zeros(n.pos.dim());
+        let mut ext_f: Array2<f64> = Array2::zeros(n.pos.dim());
+
+        //row 7 and row 15 of ext_f make x to 1 and 2
+        ext_f.row_mut(7)[0] = 1.;
+        ext_f.row_mut(15)[0] = 2.;
+        
+        //24 = 1 delT with 0.5  12 for 1 delt with 1
+        for l in 0..5000 {
+            if l == 900 {
+                ext_f.row_mut(7)[0] = 0.;
+                ext_f.row_mut(15)[0] = 0.;
+            }
+            // n_vel = Array2::zeros(n.pos.dim());
             verletstep1(&mut disp, &mut n_vel, &a, dt);
             a = get_acceleration(&n, &n_vel, &ext_f, rho, moe, nu);
             
@@ -28,43 +107,8 @@ mod tests {
             a.row_mut(8).assign(&arr1(&[0.,0.]));
             verletstep2(&mut n_vel, &a, dt);
         }
-        // 5th timestep
-        // [[0.0, 0.0],
-        // [0.0, 0.0],
-        // [0.0, 0.0],
-        // [0.0, 0.0],
-        // [9178005.642361114, 6317328.559027783],
-        // [-80650005.42534725, -26724408.637152787],
-        // [428203347.98177105, -70345816.94878478],
-        // [-1310375332.2526047, 960797656.5755213],
-        // [0.0, 0.0],
-        // [0.0, 0.0],
-        // [0.0, 0.0],
-        // [0.0, 0.0],
-        // [17760036.89236112, -4886990.017361114],
-        // [-100185129.12326394, 39597455.5121528],
-        // [147218842.77343753, -39751741.64496529],
-        // [22900108.014322974, -336707568.5221356]],
 
-
-        // 10th timestep
-        // [[0.0, 0.0],
-        // [-2.8298363877830957e20, 3.21527849046472e20],
-        // [1.2074140023625346e21, -1.5118699354617996e21],
-        // [2.1111280185852586e20, 1.986962450935603e21],
-        // [-2.8397887017787098e22, 1.737275332340676e22],
-        // [1.599423868598454e23, -1.2282805450955085e23],
-        // [-5.2631194763474104e23, 4.4425388753637895e23],
-        // [1.4083450825013607e24, -1.4233424646050618e24],
-        // [0.0, 0.0],
-        // [3.223442605923869e20, -1.696911709807679e20],
-        // [-1.6862446891930752e21, 1.1316589836272437e21],
-        // [3.5568891506146473e21, -3.3141355541587223e21],
-        // [9.02981761759937e21, -4.050265342023486e21],
-        // [-8.692373941346358e22, 7.3775565796026714e22],
-        // [2.7721622655346035e23, -3.038352601226352e23],
-        // [-4.1599425817342005e23, 5.5700181500277426e23]]
-        println!("{:?}", disp);
+        // println!("{:?}", disp);
 
     }
     #[test]
